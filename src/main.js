@@ -2,7 +2,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
-import { RectAreaLightHelper } from 'three/examples/jsm/helpers/RectAreaLightHelper.js'
 
 // === Scene Setup ===
 const scene = new THREE.Scene()
@@ -47,30 +46,29 @@ moonLight.shadow.camera.near = 1
 moonLight.shadow.camera.far = 20
 scene.add(moonLight)
 
-// Hemisphere Light — soft blue sky & ground reflection
+// Hemisphere Light — subtle sky reflection
 const hemiLight = new THREE.HemisphereLight(0x4477ff, 0x222200, 0.1)
 scene.add(hemiLight)
 
-// Point Light — the fire
+// Point Light — campfire flicker
 const fireLight = new THREE.PointLight(0xffa040, 1.5, 12, 2)
 fireLight.position.set(0, 1, 0)
 fireLight.castShadow = true
 fireLight.shadow.mapSize.set(512, 512)
 scene.add(fireLight)
 
-// Spot Light — optional flashlight effect
-const spotLight = new THREE.SpotLight(0xffffff, 0.5, 20, Math.PI * 0.1)
-spotLight.position.set(0, 2, 0)
-spotLight.target = camera
-scene.add(spotLight)
+// === Tent Light (updated bulb inside tent) ===
+const tentBulb = new THREE.PointLight(0xffcc88, 3.5, 6, 2) // brighter intensity & warm color
+tentBulb.position.set(3, 0.9, -2) // centered inside tent
+tentBulb.castShadow = true
+scene.add(tentBulb)
 
-// RectAreaLight — lantern glow near the tent
-RectAreaLightUniformsLib.init()
-const rectLight = new THREE.RectAreaLight(0xffcc88, 2, 1, 1)
-rectLight.position.set(2.5, 1, -1.5)
-rectLight.lookAt(3, 0.6, -2)
-scene.add(rectLight)
-scene.add(new RectAreaLightHelper(rectLight))
+// optional: small glowing sphere to represent the bulb
+const bulbGeo = new THREE.SphereGeometry(0.08, 16, 16)
+const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffeeaa, emissive: 0xffdd88, emissiveIntensity: 2 })
+const bulbMesh = new THREE.Mesh(bulbGeo, bulbMat)
+bulbMesh.position.copy(tentBulb.position)
+scene.add(bulbMesh)
 
 // === OBJECTS (Activity 2.3) ===
 
@@ -86,7 +84,12 @@ for (let i = 0; i < 5; i++) {
 }
 
 // Tent
-const tentMat = new THREE.MeshStandardMaterial({ color: '#444477', roughness: 0.9 })
+const tentMat = new THREE.MeshStandardMaterial({ 
+  color: '#444477', 
+  roughness: 0.9,
+  transparent: true, 
+  opacity: 0.95 // slightly translucent so light shows through
+})
 const tent = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.2, 4), tentMat)
 tent.position.set(3, 0.6, -2)
 tent.rotation.y = Math.PI / 4
@@ -118,21 +121,25 @@ for (let i = 0; i < 6; i++) {
   scene.add(trunk, leaves)
 }
 
-// === SHADOWS & ANIMATION (Activity 2.2) ===
+// === ANIMATION (Activity 2.2) ===
 const clock = new THREE.Clock()
 
 function animate() {
   const elapsed = clock.getElapsedTime()
-  // Fire flicker animation
+  // Fire flicker
   fireLight.intensity = 1.5 + Math.sin(elapsed * 10) * 0.3
   fireLight.position.y = 1 + Math.sin(elapsed * 5) * 0.05
+
+  // Gentle bulb flicker (small variation)
+  tentBulb.intensity = 3.5 + Math.sin(elapsed * 3) * 0.2
+
   controls.update()
   renderer.render(scene, camera)
   requestAnimationFrame(animate)
 }
 animate()
 
-// Resize handling
+// Handle resizing
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
